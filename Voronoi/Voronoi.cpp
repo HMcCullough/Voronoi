@@ -20,23 +20,27 @@ collection of sites shown. Circle events are indicated by green dots.
 */
 
 /*
-For inserting new events we will need a priority queue. This is because
+For inserting new events we will need a priority queue. This is because we need to keep the sites
+sorted "lexicograpically" according to the algroithm and a priority queue will do this quickly.
 */
-
-namespace Voronoi
+#include "Voronoi.hpp"
+namespace Vor
 {
-    typedef struct
-    {
-        double x, y;
-    } point;
+    #pragma region Point Class Definition
+    Point::Point() : x(0.0), y(0.0) {}
+    Point::Point(double x, double y) : x(x), y(y) {}
+    #pragma endregion
 
-    class Voronoi
-    {
-    public:
-        Voronoi()
-        {
-        }
+    #pragma region Event Class Definition
+    Event::Event(Point &p, const EventType &type) : site(p), type(type) {}
+    #pragma endregion
 
-    private:
-    };
+    #pragma region Voronoi Class Definition
+    Voronoi::Voronoi() {}
+    Voronoi::Voronoi(std::vector<Point> &points)
+    {
+        for (auto it = points.begin(); it != points.end(); ++it)
+            eventQ.push(new Event(*it, EventType::SiteEvent));
+    }
+    #pragma endregion
 }
