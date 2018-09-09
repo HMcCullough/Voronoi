@@ -34,6 +34,14 @@ namespace Vor
     };
     #pragma endregion
 
+    #pragma region Edge Class Prototype
+    class Edge
+    {
+        Point start, end;
+        Edge(Point &start, Point &end);
+    };
+    #pragma endregion
+
     #pragma region Voronoi Class Prototype
     class Voronoi
     {
@@ -41,8 +49,14 @@ namespace Vor
         Voronoi();
         Voronoi(std::vector<Point> &points);
 
+        std::vector<Edge> Generate();
+
     private:
+        double sweepLineY;
         std::priority_queue<Event *, std::vector<Event *>, Event::EComparer> eventQ;
+
+        void ProcessSiteEvent(Event * event);
+        void ProcessCircleEvent(Event * event);
     };
     #pragma endregion
 }
