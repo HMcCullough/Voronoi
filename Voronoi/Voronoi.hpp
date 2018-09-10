@@ -38,23 +38,34 @@ namespace Vor
     #pragma endregion
 
     #pragma region Edge Class Prototype
+    class Parabola;
     class Edge
     {
     public:
+        Parabola * parabola;
         Point * start, * left, * right;
+        Edge * neighbor;
         Edge(Point * start, Point * left, Point * right);
     };
     #pragma endregion
 
-    #pragma region BeachLine Class Prototype
+    #pragma region Parabola Class Prototype
     // Per Stephen Fortune's algorithm, the beach-line sequence will be represented as a binary tree where the leaf nodes
     // contain the parabola information and the inner nodes contain edge information.
     class Parabola
     {
     public:
         friend class BeachLine;
+
         Parabola();
         Parabola(Point * point);
+
+        // Member Functions
+        double GetY(double x, double sweepLineY);
+        Parabola * GetLeftParent();
+        Parabola * GetRightParent();
+        Parabola * GetLeftChild();
+        Parabola * GetRightChild();
 
         // Getters
         bool isLeaf() const { return (_left == nullptr && _right == nullptr); }
@@ -62,6 +73,7 @@ namespace Vor
         Point * getSite() const { return _site; }
         Parabola * getLeft() const { return _left; }
         Parabola * getRight() const { return _right; }
+        Parabola * getParent() const { return _parent; }
 
         Edge * getEdge() const { return _edge; }
         Event * getCircleEvent() const { return _event; }
@@ -71,17 +83,26 @@ namespace Vor
         void setRight(Parabola * par) { _right = par; }
         void setEdge(Edge * edge) { _edge = edge; }
         void setCircleEvent(Event * cEvent) { _event = cEvent; }
+        
     private:
         Edge * _edge;
         Event * _event;
         Point * _site;
         Parabola * _left, * _right, * _parent;
 
-        bool _isLeaf;
+        // Useful for calculating parabola intersections and specific coordinates on parabola
+        typedef struct
+        {
+            // In the form f(x)=ax^2+bx+c
+            double a, b, c;
+        } ParabolaProperties;
 
         double GetXOfEdge(double sweepLineY);
+        ParabolaProperties GetProperties(double sweepLineY);
     };
+    #pragma endregion
 
+    #pragma region BeachLine Class Prototype
     class BeachLine
     {
     public:
@@ -118,6 +139,7 @@ namespace Vor
 
         void InsertParabola(Point * point);
         void RemoveParabola(Event * event);
+        void CheckCircle (Parabola * par);
         void FixEdges();
     };
     #pragma endregion

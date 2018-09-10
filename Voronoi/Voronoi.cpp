@@ -16,15 +16,12 @@ namespace Vor
     #pragma endregion
 
     #pragma region Edge Class Definition
-    Edge::Edge(Point * start, Point * left, Point * right) : start(start), left(left), right(right) {}
+    Edge::Edge(Point * start, Point * left, Point * right) : start(start), left(left), right(right), neighbor(nullptr), parabola(nullptr) {}
     #pragma endregion
 
-    #pragma region BeachLine Class Definition
-    // Parabola definitions
     #pragma region Parabola Class Definition
     Parabola::Parabola()
     {
-        _isLeaf = false;
         _edge = nullptr;
         _event = nullptr;
         _site = nullptr;
@@ -33,7 +30,6 @@ namespace Vor
 
     Parabola::Parabola(Point * point)
     {
-        _isLeaf = false;
         _edge = nullptr;
         _event = nullptr;
         _site = point;
@@ -45,31 +41,10 @@ namespace Vor
         // left is the rightmost child in the left subtree of this
         // right is the leftmost child in the right subtree of this
         // These represent the parabolas that form the current node's edge
-        Parabola * left = nullptr, * right = nullptr;
-        for (left = _left; left->_right != nullptr; left = left->_right);
-        for (right = _right; right->_left != nullptr; right = right->_left);
+        Parabola * left = GetLeftChild(), * right = GetRightChild();
 
-        typedef struct
-        {
-            // In the form f(x)=ax^2+bx+c
-            double a, b, c;
-        } ParabolaProperties;
-        // NOTE : This math comes directly from the directrix/focus relationship of parabolas:
-        //      f(x)=((x - p_x)^2) / (2 * (p_y - sweepLineY))+(p_y + sweepLineY) / 2
-        // dp is used to "simplify" the calculations
-        double dp = 2.0 * (left->_site->y - sweepLineY);
-        ParabolaProperties leftPara = {
-            1.0 / dp,
-            -2.0 * left->_site->x / dp,
-            sweepLineY + dp / 4.0 + left->_site->x * left->_site->x / dp
-        };
-        
-        dp = 2.0 * (right->_site->y - sweepLineY);
-        ParabolaProperties rightPara = {
-            1.0 / dp,
-            -2.0 * right->_site->x / dp,
-            sweepLineY + dp / 4.0 + right->_site->x * right->_site->x / dp
-        };
+        ParabolaProperties leftPara = left->GetProperties(sweepLineY);
+        ParabolaProperties rightPara = right->GetProperties(sweepLineY);
 
         // The roots of the avgPara will be the x-coordinates of the intersections of the left and right parabolas.
         ParabolaProperties avgPara = { leftPara.a - rightPara.a, leftPara.b - rightPara.b, leftPara.c - rightPara.c };
@@ -84,8 +59,69 @@ namespace Vor
         // Play here to see for yourself: https://www.desmos.com/calculator/tuyioagkxh
         return (left->_site->y < right->_site->y) ? std::max(x0, x1) : std::min(x0, x1);
     }
+
+    // Return the y-coordinate of parabola at x defined by sweepLineY as the directrix and _site as the focus
+    double Parabola::GetY(double x, double sweepLineY)
+    {
+        ParabolaProperties para = GetProperties(sweepLineY);
+        return para.a * x * x + para.b * x + para.c;
+    }
+
+    Parabola::ParabolaProperties Parabola::GetProperties(double sweepLineY)
+    {
+        // NOTE : This math comes directly from the directrix/focus relationship of parabolas:
+        //      f(x)=((x - p_x)^2) / (2 * (p_y - sweepLineY))+(p_y + sweepLineY) / 2
+        // dp is just to "simplify" the equations
+        double dp = 2.0 * (_site->y - sweepLineY);
+        return {
+            1.0 / dp,
+            -2.0 * _site->x / dp,
+            sweepLineY + dp / 4.0 + _site->x * _site->x / dp
+        };
+    }
+
+    Parabola * Parabola::GetLeftParent()
+    {
+        Parabola * leftParent = this->_parent, * last = this;
+        while (leftParent->getLeft() == last)
+        {
+            if (leftParent->getParent() == nullptr)
+                return nullptr;
+            last = leftParent;
+            leftParent = leftParent->getParent();
+        }
+        return leftParent;
+    }
+
+    Parabola * Parabola::GetRightParent()
+    {
+        Parabola * rightParent = this->_parent, * last = this;
+        while (rightParent->getRight() == last)
+        {
+            if (rightParent->getParent() == nullptr)
+                return nullptr;
+            last = rightParent;
+            rightParent = rightParent->getParent();
+        }
+        return rightParent;
+    }
+
+    Parabola * Parabola::GetLeftChild()
+    {
+        Parabola * left = nullptr;
+        for (left = _left; !left->isLeaf(); left = left->_right);
+        return left;
+    }
+
+    Parabola * Parabola::GetRightChild()
+    {
+        Parabola * right = nullptr;
+        for (right = _right; !right->isLeaf(); right = right->_left);
+        return right;
+    }
     #pragma endregion
 
+    #pragma region BeachLine Class Definition
     // BeachLine definitions
     BeachLine::BeachLine() : _root(nullptr) {}
     bool BeachLine::isEmpty() const { return (_root == nullptr); }
@@ -200,6 +236,38 @@ namespace Vor
             _deletedEvents.insert(parabolaAboveX->getCircleEvent());
             parabolaAboveX->setCircleEvent(nullptr);
         }
+
+        Point * start = new Point(point->x, parabolaAboveX->GetY(point->x, _sweepLineY));
+        _points.push_back(start);
+
+        Edge * leftEdge = new Edge(start, parabolaAboveX->getSite(), point),
+             * rightEdge = new Edge(start, point, parabolaAboveX->getSite());
+
+        leftEdge->neighbor = rightEdge;
+        _edges.push_back(leftEdge);
+
+        Parabola * pLeft = new Parabola(parabolaAboveX->getSite()),
+                 * pNew = new Parabola(point),
+                 * pRight = new Parabola(parabolaAboveX->getSite());
+        
+        /*
+                (parabolaAboveX)      ===>      (rightEdge)
+                                                /         \
+                                        (leftEdge)      (pRight)
+                                        /        \
+                                    (pLeft)     (pNew)
+        */
+        // The above diagram shows what happens to parabolaAboveX
+        parabolaAboveX->setRight(pRight);
+        parabolaAboveX->setLeft(new Parabola());
+        parabolaAboveX->getLeft()->setLeft(pLeft);
+        parabolaAboveX->getLeft()->setRight(pNew);
+
+        parabolaAboveX->setEdge(rightEdge);
+        parabolaAboveX->getLeft()->setEdge(leftEdge);
+
+        CheckCircle(pLeft);
+        CheckCircle(pRight);
     }
 
     // If the next event that the sweep line encounters is a circle event, we record the fact that we have encountered
@@ -209,8 +277,23 @@ namespace Vor
     void Voronoi::RemoveParabola(Event * event)
     {
     }
+    
+    void Voronoi::CheckCircle (Parabola * par)
+    {
+        // This will get the parents to which par is the leftmost child in the right subtree and the rightmost child in the left subtree respectively
+        // (leftParent => first parent on the left) and (rightParent => first parent on the right)
+        // Topographically this represent the edge formed by intersection of the parabola to the left and right respectively 
+        Parabola * leftParent = par->GetLeftParent(),
+                 * rightParent = par->GetRightParent();
+        // If the parent exists then grab its respective child. NOTE : leftParent->GetRightChild() == rightParent->GetLeftChild() == par
+        Parabola * leftSib = leftParent ? leftParent->GetLeftChild() : nullptr,
+                 * rightSib = rightParent ? rightParent->GetRightChild() : nullptr;
 
-    void FixEdges()
+        if (!leftSib || !rightSib || leftSib->getSite() == rightSib->getSite())
+            return;
+    }
+
+    void Voronoi::FixEdges()
     {
     }
     #pragma endregion
