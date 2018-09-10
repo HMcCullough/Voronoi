@@ -9,7 +9,7 @@ int main(int argc, char ** argv)
     points[2] = new Point(0.0, 2.0);
     Voronoi * v = new Voronoi();
 
-    v->Generate(points);
+    v->Generate(points, 5, 5);
 
     return 0;
 }

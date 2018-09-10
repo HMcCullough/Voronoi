@@ -1,16 +1,4 @@
 /*
-The algorithm
-
-We now have everything we need to know to understand Fortune's algorithm. To detect edges and vertices in the diagram, it is enough to find the appearance and disappearance
-of parabolic arcs in the beach line. We will therefore keep track of the beach line by imagining that we walk along it from left to right and record the order of the sites
-that produce its constituent parabolic arcs. We know that this order will not change until the sweep line reaches either a site event or circle event. Also, the breakpoints
-are implicitly recorded by noting the adjacency of the parabolic arcs on the beach line.
-
-In this way, the diagram is constructed by considering the finite sequence of events. Shown below is the sequence of events that computes the Voronoi diagram of the
-collection of sites shown. Circle events are indicated by green dots.
-*/
-
-/*
 For inserting new events we will need a priority queue. This is because we need to keep the sites
 sorted "lexicograpically" according to the algroithm and a priority queue will do this quickly.
 */
@@ -27,17 +15,18 @@ namespace Vor
     #pragma endregion
 
     #pragma region Edge Class Definition
-    Edge::Edge(Point &start, Point &end) : start(start), end(end) {}
+    Edge::Edge(Point * start, Point * left, Point * right) : start(start), left(left), right(right) {}
     #pragma endregion
 
     #pragma region BeachLine Class Definition
     // Parabola definitions
+    #pragma region Parabola Class Definition
     Parabola::Parabola()
     {
         _isLeaf = false;
         _edge = nullptr;
         _event = nullptr;
-        _point = nullptr;
+        _site = nullptr;
         _left = _right = _parent = nullptr;
     }
 
@@ -46,26 +35,37 @@ namespace Vor
         _isLeaf = false;
         _edge = nullptr;
         _event = nullptr;
-        _point = point;
+        _site = point;
         _left = _right = _parent = nullptr;
     }
+    #pragma endregion
 
     // BeachLine definitions
     BeachLine::BeachLine() : _root(nullptr) {}
     bool BeachLine::isEmpty() const { return (_root == nullptr); }
 
-    void BeachLine::insert(Event * event)
+    Parabola * BeachLine::GetParabolaByX(double x)
     {
+        Parabola * current = _root;
+        while (!current->isLeaf())
+        {
+            if (current->_site->x > x)
+                current = current->_left;
+            else
+                current = current->_right;
+        }
+        return current;
     }
     #pragma endregion
 
     #pragma region Voronoi Class Definition
-    Voronoi::Voronoi()
-    {
-    }
+    Voronoi::Voronoi() {}
 
-    std::vector<Edge> Voronoi::Generate(std::vector<Point *> &points)
+    std::vector<Edge *> Voronoi::Generate(std::vector<Point *> &points, int width, int height)
     {
+        this->width = width;
+        this->height = height;
+
         sweepLineY = 0.0;
         for (auto it = points.begin(); it != points.end(); ++it)
             eventQ.push(new Event(*it, EventType::SiteEvent));
@@ -90,10 +90,10 @@ namespace Vor
 
             // Process Site Event
             if (event->type == EventType::SiteEvent)
-                ProcessSiteEvent(event);
+                InsertParabola(event->site);
             // Process Circle Event
             else if (event->type == EventType::CircleEvent)
-                ProcessCircleEvent(event);
+                RemoveParabola(event);
             // Dispose of the event
             delete event;
 
@@ -113,15 +113,51 @@ namespace Vor
     // If the next event that the sweep line encounters is a site event, we simply insert the new site into our list
     // of sites in the order in which the corresponding parabolic arc appears on the beach line. We then record the
     // fact that we have encountered a new edge in the diagram.
-    void Voronoi::ProcessSiteEvent(Event * event)
+    void Voronoi::InsertParabola(Point * point)
     {
+        if (!beachline.getRoot())
+        {
+            beachline.setRoot(new Parabola(point));
+            return;
+        }
+
+        // This is a degenerate case where the first two nodes are at the same y-coordinate
+        // In this case we will be making the root node an inner node with two leaf children for each site.
+        if (beachline.getRoot()->isLeaf() && beachline.getRoot()->getSite()->y - point->y < EPSILON)
+        {
+            // _root is no longer a leaf
+            Point * firstSite = beachline.getRoot()->getSite();
+
+            // Add a child foreach site to _root
+            beachline.getRoot()->setLeft(new Parabola(firstSite));
+            beachline.getRoot()->setRight(new Parabola(point));
+
+            // If these sites are at the same y-coord then the edge beginning will be the mid-x starting at the
+            // highest possible point (height)
+            Point * midPoint = new Point((firstSite->x + point->x) / 2.0, height);
+            points.push_back(midPoint);
+
+            // We do not need to determine which is on the left or right because the priority queue sorts
+            // lexicographically which means if they are at the same y-coord they will pop out with the lower
+            // x-coord first
+            beachline.getRoot()->setEdge(new Edge(midPoint, firstSite, point));
+            edges.push_back(beachline.getRoot()->getEdge());
+            return;
+        }
+
+        Parabola * parabolaAboveX = beachline.GetParabolaByX(point->x);
+        if (parabolaAboveX->getCircleEvent())
+        {
+            deletedEvents.insert(parabolaAboveX->getCircleEvent());
+            parabolaAboveX->setCircleEvent(nullptr);
+        }
     }
 
     // If the next event that the sweep line encounters is a circle event, we record the fact that we have encountered
     // a vertex in the diagram and that this vertex is the endpoint of the edges corresponding to the two breakpoints
     // that have come together. We also record the new edge corresponding to the new breakpoint that results from the
     // circle event.
-    void Voronoi::ProcessCircleEvent(Event * event)
+    void Voronoi::RemoveParabola(Event * event)
     {
     }
 
