@@ -78,6 +78,8 @@ namespace Vor
         Parabola * _left, * _right, * _parent;
 
         bool _isLeaf;
+
+        double GetXOfEdge(double sweepLineY);
     };
 
     class BeachLine
@@ -86,7 +88,7 @@ namespace Vor
         BeachLine();
 
         bool isEmpty() const;
-        Parabola * GetParabolaByX(double x);
+        Parabola * GetParabolaByX(double x, double sweepLineY);
 
         Parabola * getRoot() const { return _root; }
         void setRoot(Parabola * par) { _root = par; }
@@ -105,12 +107,12 @@ namespace Vor
         std::vector<Edge *> Generate(std::vector<Point *> &points, int width, int height);
 
     private:
-        double sweepLineY;
-        std::priority_queue<Event *, std::vector<Event *>, Event::EComparer> eventQ;
-        std::set<Event *> deletedEvents;
-        std::vector<Edge *> edges;
-        std::list<Point *> points;
-        BeachLine beachline;
+        double _sweepLineY;
+        std::priority_queue<Event *, std::vector<Event *>, Event::EComparer> _eventQ;
+        std::set<Event *> _deletedEvents;
+        std::vector<Edge *> _edges;
+        std::list<Point *> _points;
+        BeachLine _beachline;
 
         int width, height;
 
