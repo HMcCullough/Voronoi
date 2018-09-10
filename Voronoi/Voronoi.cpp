@@ -6,15 +6,6 @@ of parabolic arcs in the beach line. We will therefore keep track of the beach l
 that produce its constituent parabolic arcs. We know that this order will not change until the sweep line reaches either a site event or circle event. Also, the breakpoints
 are implicitly recorded by noting the adjacency of the parabolic arcs on the beach line.
 
-If the next event that the sweep line encounters is a site event, we simply insert the new site into our list of sites in the order in which the corresponding parabolic arc
-appears on the beach line. We then record the fact that we have encountered a new edge in the diagram.
-
-If the next event that the sweep line encounters is a circle event, we record the fact that we have encountered a vertex in the diagram and that this vertex is the endpoint
-of the edges corresponding to the two breakpoints that have come together. We also record the new edge corresponding to the new breakpoint that results from the circle event.
-
-Whether we encounter a site or circle event, we will always check to see if we have added a new triple of parabolic arcs on the beach line that may lead to a future circle
-event. It is also possible that we will remove a future circle event from consideration if the triple of parabolic arcs that led to it no longer exists after the event.
-
 In this way, the diagram is constructed by considering the finite sequence of events. Shown below is the sequence of events that computes the Voronoi diagram of the
 collection of sites shown. Circle events are indicated by green dots.
 */
@@ -32,22 +23,52 @@ namespace Vor
     #pragma endregion
 
     #pragma region Event Class Definition
-    Event::Event(Point &p, const EventType &type) : site(p), type(type) {}
+    Event::Event(Point * p, const EventType &type) : site(p), type(type) {}
     #pragma endregion
 
-    #pragma region Edge Class Prototype
+    #pragma region Edge Class Definition
     Edge::Edge(Point &start, Point &end) : start(start), end(end) {}
     #pragma endregion
 
-    #pragma region Voronoi Class Definition
-    Voronoi::Voronoi() {}
+    #pragma region BeachLine Class Definition
+    // Parabola definitions
+    Parabola::Parabola()
+    {
+        _isLeaf = false;
+        _edge = nullptr;
+        _event = nullptr;
+        _point = nullptr;
+        _left = _right = _parent = nullptr;
+    }
 
-    std::vector<Edge> Voronoi::Generate(std::vector<Point> &points)
+    Parabola::Parabola(Point * point)
+    {
+        _isLeaf = false;
+        _edge = nullptr;
+        _event = nullptr;
+        _point = point;
+        _left = _right = _parent = nullptr;
+    }
+
+    // BeachLine definitions
+    BeachLine::BeachLine() : _root(nullptr) {}
+    bool BeachLine::isEmpty() const { return (_root == nullptr); }
+
+    void BeachLine::insert(Event * event)
+    {
+    }
+    #pragma endregion
+
+    #pragma region Voronoi Class Definition
+    Voronoi::Voronoi()
+    {
+    }
+
+    std::vector<Edge> Voronoi::Generate(std::vector<Point *> &points)
     {
         sweepLineY = 0.0;
         for (auto it = points.begin(); it != points.end(); ++it)
             eventQ.push(new Event(*it, EventType::SiteEvent));
-        std::vector<Edge> edges;
 
         // Here we process the event queue until it is empty
         Event * event = nullptr;
@@ -57,11 +78,8 @@ namespace Vor
             // This is guaranteed to be the highest point since the y-coord is the priority in eventQ.
             event = eventQ.top();
             eventQ.pop();
-            sweepLineY = event->site.y;
+            sweepLineY = event->site->y;
 
-            // Whether we encounter a site or circle event, we will always check to see if we have added a new triple of parabolic
-            // arcs on the beach line that may lead to a future circle event. It is also possible that we will remove a future
-            // circle event from consideration if the triple of parabolic arcs that led to it no longer exists after the event.
             // First we check to see if the event has already been removed. This occurs when circle events are encountered.
             if (deletedEvents.find(event) != deletedEvents.end())
             {
@@ -78,7 +96,16 @@ namespace Vor
                 ProcessCircleEvent(event);
             // Dispose of the event
             delete event;
+
+            // Whether we encounter a site or circle event, we will always check to see if we have added a new triple of parabolic
+            // arcs on the beach line that may lead to a future circle event. It is also possible that we will remove a future
+            // circle event from consideration if the triple of parabolic arcs that led to it no longer exists after the event.
+            // This step occurs in process functions
         }
+
+        // Fortune's Algorithm produces a "distorted" but topographically equivalent version of the Voronoi diagram. This is directly
+        // taken from CMSC 754 lecture notes at http://people.math.gatech.edu/~randall/Algs07/mount.pdf but I could not find the author's name.
+        FixEdges();
 
         return edges;
     }
@@ -95,6 +122,10 @@ namespace Vor
     // that have come together. We also record the new edge corresponding to the new breakpoint that results from the
     // circle event.
     void Voronoi::ProcessCircleEvent(Event * event)
+    {
+    }
+
+    void FixEdges()
     {
     }
     #pragma endregion
