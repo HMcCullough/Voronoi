@@ -41,54 +41,61 @@ namespace Vor
 
     #pragma region Voronoi Class Definition
     Voronoi::Voronoi() {}
-    Voronoi::Voronoi(std::vector<Point> &points)
+
+    std::vector<Edge> Voronoi::Generate(std::vector<Point> &points)
     {
         sweepLineY = 0.0;
         for (auto it = points.begin(); it != points.end(); ++it)
             eventQ.push(new Event(*it, EventType::SiteEvent));
-    }
-
-    std::vector<Edge> Voronoi::Generate()
-    {
-        // We start by peeking at the event queue and setting the sweepLineY to the event site's y coord
-        // This is guaranteed to be the highest point since the y-coord is the priority in eventQ.
-        Event * event = eventQ.top();
-        sweepLineY = event->site.y;
-
         std::vector<Edge> edges;
 
         // Here we process the event queue until it is empty
+        Event * event = nullptr;
         while (!eventQ.empty())
         {
+            // We start by peeking at the event queue and setting the sweepLineY to the event site's y coord
+            // This is guaranteed to be the highest point since the y-coord is the priority in eventQ.
             event = eventQ.top();
             eventQ.pop();
-
-            if (event->type == EventType::SiteEvent)
-            {
-                // Process Site Event
-                // If the next event that the sweep line encounters is a site event, we simply insert the new site into our list
-                // of sites in the order in which the corresponding parabolic arc appears on the beach line. We then record the
-                // fact that we have encountered a new edge in the diagram.
-                ProcessSiteEvent(event);
-            }
-            else if (event->type == EventType::CircleEvent)
-            {
-                // Process Circle Event
-                // If the next event that the sweep line encounters is a circle event, we record the fact that we have encountered
-                // a vertex in the diagram and that this vertex is the endpoint of the edges corresponding to the two breakpoints
-                // that have come together. We also record the new edge corresponding to the new breakpoint that results from the
-                // circle event.
-                ProcessCircleEvent(event);
-            }
+            sweepLineY = event->site.y;
 
             // Whether we encounter a site or circle event, we will always check to see if we have added a new triple of parabolic
             // arcs on the beach line that may lead to a future circle event. It is also possible that we will remove a future
             // circle event from consideration if the triple of parabolic arcs that led to it no longer exists after the event.
+            // First we check to see if the event has already been removed. This occurs when circle events are encountered.
+            if (deletedEvents.find(event) != deletedEvents.end())
+            {
+                deletedEvents.erase(event);
+                delete event;
+                continue;
+            }
+
+            // Process Site Event
+            if (event->type == EventType::SiteEvent)
+                ProcessSiteEvent(event);
+            // Process Circle Event
+            else if (event->type == EventType::CircleEvent)
+                ProcessCircleEvent(event);
+            // Dispose of the event
+            delete event;
         }
 
         return edges;
     }
 
-    
+    // If the next event that the sweep line encounters is a site event, we simply insert the new site into our list
+    // of sites in the order in which the corresponding parabolic arc appears on the beach line. We then record the
+    // fact that we have encountered a new edge in the diagram.
+    void Voronoi::ProcessSiteEvent(Event * event)
+    {
+    }
+
+    // If the next event that the sweep line encounters is a circle event, we record the fact that we have encountered
+    // a vertex in the diagram and that this vertex is the endpoint of the edges corresponding to the two breakpoints
+    // that have come together. We also record the new edge corresponding to the new breakpoint that results from the
+    // circle event.
+    void Voronoi::ProcessCircleEvent(Event * event)
+    {
+    }
     #pragma endregion
 }

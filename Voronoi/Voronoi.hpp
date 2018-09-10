@@ -1,5 +1,6 @@
 #include <vector>
 #include <queue>
+#include <set>
 
 namespace Vor
 {
@@ -25,7 +26,7 @@ namespace Vor
 
         struct EComparer
         {
-            bool operator()(Event * e1, Event * e2)
+            bool operator()(const Event * e1, const Event * e2)
             {
                 return ((e1->site.y < e2->site.y) ||
                        ((e1->site.y == e2->site.y) && (e1->site.x < e2->site.x)));
@@ -47,13 +48,13 @@ namespace Vor
     {
     public:
         Voronoi();
-        Voronoi(std::vector<Point> &points);
 
-        std::vector<Edge> Generate();
+        std::vector<Edge> Generate(std::vector<Point> &points);
 
     private:
         double sweepLineY;
         std::priority_queue<Event *, std::vector<Event *>, Event::EComparer> eventQ;
+        std::set<Event *> deletedEvents;
 
         void ProcessSiteEvent(Event * event);
         void ProcessCircleEvent(Event * event);
