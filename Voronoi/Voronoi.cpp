@@ -17,6 +17,22 @@ namespace Vor
 
     #pragma region Edge Class Definition
     Edge::Edge(Point * start, Point * left, Point * right) : start(start), left(left), right(right), neighbor(nullptr), parabola(nullptr) {}
+
+    Point Edge::GetDirection()
+    {
+        return { -(left->y - right->y), left->x - right->x };
+    }
+
+    Point * Edge::GetIntersection(Edge * other)
+    {
+        Point thisDir = GetDirection(), otherDir = other->GetDirection(), * intersection = nullptr;
+        double u = (start->y * otherDir.x + otherDir.y * other->start->x - other->start->y * otherDir.x - otherDir.y * start->x ) / (thisDir.x * otherDir.y - thisDir.y * otherDir.x);
+        double v = (start->x + thisDir.x * u - other->start->x) / otherDir.x;
+        
+        if (u >= 0 && v >= 0)
+            intersection = new Point(start->x + thisDir.x * u, start->y + thisDir.y * u);
+        return intersection;
+    }
     #pragma endregion
 
     #pragma region Parabola Class Definition
@@ -291,6 +307,32 @@ namespace Vor
 
         if (!leftSib || !rightSib || leftSib->getSite() == rightSib->getSite())
             return;
+
+        // The intersection point represents the points to which leftSib and rightSib squeeze par. This means that it is equidistant
+        // from leftSib, par, and rightSib (since this point is the meeting of three cells in the diagram).
+        Point * intersection = leftParent->getEdge()->GetIntersection(rightParent->getEdge());
+        if (!intersection)
+            _points.push_back(intersection);
+        else
+            return;
+
+        // Since this point is equidistant from all of the previously listed parabola, we simple need the distance from one to detect
+        // when the future circle event will occur.
+        double dx = leftSib->getSite()->x - intersection->x,
+               dy = leftSib->getSite()->y - intersection->y;
+        double d = std::sqrt(dx * dx + dy * dy);
+
+        // We check to see if the circle event lies below the sweep-line and if not we know that it has already happened and can return
+        if (intersection->y - d < _sweepLineY)
+            return;
+
+        // Otherwise we make the new event and push it to the queue
+        Event * cEvent = new Event(new Point(intersection->x, intersection->y - d), EventType::CircleEvent);
+        _points.push_back(cEvent->site);
+        _eventQ.push(cEvent);
+
+        par->setCircleEvent(cEvent);
+        cEvent->parabola = par;
     }
 
     void Voronoi::FixEdges()

@@ -17,10 +17,12 @@ namespace Vor
     #pragma endregion
 
     #pragma region Event Class Prototype
+    class Parabola;
     typedef enum { SiteEvent, CircleEvent } EventType;
     class Event
     {
     public:
+        Parabola * parabola;
         EventType type;
         Point * site;
 
@@ -38,7 +40,6 @@ namespace Vor
     #pragma endregion
 
     #pragma region Edge Class Prototype
-    class Parabola;
     class Edge
     {
     public:
@@ -46,6 +47,10 @@ namespace Vor
         Point * start, * left, * right;
         Edge * neighbor;
         Edge(Point * start, Point * left, Point * right);
+
+        Point * GetIntersection(Edge * other);
+    private:
+        Point GetDirection();
     };
     #pragma endregion
 
