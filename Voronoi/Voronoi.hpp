@@ -44,7 +44,7 @@ namespace Vor
     {
     public:
         Parabola * parabola;
-        Point * start, * left, * right;
+        Point * start, * left, * right, * end;
         Edge * neighbor;
         Edge(Point * start, Point * left, Point * right);
 
@@ -76,16 +76,24 @@ namespace Vor
         bool isLeaf() const { return (_left == nullptr && _right == nullptr); }
 
         Point * getSite() const { return _site; }
-        Parabola * getLeft() const { return _left; }
-        Parabola * getRight() const { return _right; }
+        Parabola * getLeft() { return _left; }
+        Parabola * getRight() { return _right; }
         Parabola * getParent() const { return _parent; }
 
         Edge * getEdge() const { return _edge; }
         Event * getCircleEvent() const { return _event; }
 
         // Setters
-        void setLeft(Parabola * par) { _left = par; }
-        void setRight(Parabola * par) { _right = par; }
+        void setLeft(Parabola * par)
+        {
+            _left = par;
+            par->_parent = this;
+        }
+        void setRight(Parabola * par)
+        {
+            _right = par;
+            par->_parent = this;
+        }
         void setEdge(Edge * edge) { _edge = edge; }
         void setCircleEvent(Event * cEvent) { _event = cEvent; }
         

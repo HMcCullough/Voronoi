@@ -16,7 +16,7 @@ namespace Vor
     #pragma endregion
 
     #pragma region Edge Class Definition
-    Edge::Edge(Point * start, Point * left, Point * right) : start(start), left(left), right(right), neighbor(nullptr), parabola(nullptr) {}
+    Edge::Edge(Point * start, Point * left, Point * right) : start(start), left(left), right(right), end(nullptr), neighbor(nullptr), parabola(nullptr) {}
 
     Point Edge::GetDirection()
     {
@@ -292,6 +292,102 @@ namespace Vor
     // circle event.
     void Voronoi::RemoveParabola(Event * event)
     {
+        Parabola * parabolaToRemove = event->parabola;
+        Parabola * leftParent = parabolaToRemove->GetLeftParent(),
+                 * rightParent = parabolaToRemove->GetRightParent();
+        Parabola * leftSib = leftParent->GetLeftChild(),
+                 * rightSib = rightParent->GetRightChild();
+
+        if (leftSib->getCircleEvent())
+        {
+            _deletedEvents.insert(leftSib->getCircleEvent());
+            leftSib->setCircleEvent(nullptr);
+        }
+        if (rightSib->getCircleEvent())
+        {
+            _deletedEvents.insert(rightSib->getCircleEvent());
+            rightSib->setCircleEvent(nullptr);
+        }
+
+        // Note that the current point is the circumcenter of parabolaToRemove, leftSib, and rightSib (see CheckCircle)
+        Point * circumcenter = new Point(event->site->x, parabolaToRemove->GetY(event->site->x, _sweepLineY));
+        _points.push_back(circumcenter);
+
+        // This is the new edge formed at the circle event since edges on either side will end here and "collide" into one
+        Edge * newEdge = new Edge(circumcenter, leftSib->getSite(), rightSib->getSite());
+        leftParent->getEdge()->end = circumcenter;
+        rightParent->getEdge()->end = circumcenter;
+
+        /*
+                (leftParent)                            (leftParent)
+                /          \                            /          \
+            (lefSib)   (rightParent)      ===>     (leftSib)   (rightSib)
+                       /           \
+            (parabolatoRemove) (rightSib)
+            
+            OR
+
+                            (rightParent)                   (rightParent)
+                            /           \                   /           \
+                    (leftParent)    (rightSib)   ===>   (leftSib)    (rightSib)
+                    /          \
+            (leftSib)   (parabolaToRemove)
+        */
+        // The above diagram shows what is happening in this function and as you can see we need a reference to the higher
+        // of leftParent and rightParent so that it can store the new edge. NOTE : the diagram not the only case but it is the
+        // simplest case to show, rightParent and leftParent might be farther up ther tree.
+        Parabola * higher = nullptr, * par = parabolaToRemove;
+        while (par != _beachline.getRoot())
+        {
+            par = par->getParent();
+            if (par == leftParent)
+                higher = leftParent;
+            else if (par == rightParent)
+                higher = rightParent;
+        }
+        higher->setEdge(newEdge);
+        _edges.push_back(newEdge);
+
+        /*
+                    (rightParent)                               (rightParent)
+                    /           \                               /           \
+                 (....)      (rightSib)                     (....)       (rightSib)
+                 /    \                         ===>        /    \
+            (....)  (leftParent)                        (....)   (leftSib)
+                    /          \
+                (leftSib)  (parabolaToRemove)
+
+                    (leftParent)                                (leftParent)
+                    /          \                                /          \
+                (leftSib)     (....)                        (leftSib)     (....)
+                              /    \            ===>                      /    \
+                    (rightParent)  (....)                           (rightSib) (....)
+                    /           \
+          (parabolaToRemove)  (rightSib)
+        */
+        // The above diagram shows the other 2 cases which are all represented by the code below. Think of the first diagrams as
+        // cases 1.2 and 2.1 respectively and the second group of diagrams as 2.2 and 1.1 respectively.
+        Parabola * gParent = parabolaToRemove->getParent()->getParent();
+        if (parabolaToRemove->getParent()->getLeft() == parabolaToRemove)
+        {
+            if (gParent->getLeft() == parabolaToRemove->getParent())
+                gParent->setLeft(parabolaToRemove->getParent()->getRight()); // Case 1.1
+            else if (gParent->getRight() == parabolaToRemove->getParent())
+                gParent->setRight(parabolaToRemove->getParent()->getRight()); // Case 1.2
+        }
+        else
+        {
+            if (gParent->getLeft() == parabolaToRemove->getParent())
+                gParent->setLeft(parabolaToRemove->getParent()->getLeft()); // Case 2.1
+            else if (gParent->getRight() == parabolaToRemove->getParent())
+                gParent->setRight(parabolaToRemove->getParent()->getLeft()); // Case 2.2
+        }
+
+        delete parabolaToRemove->getParent();
+        delete parabolaToRemove;
+
+        CheckCircle(leftSib);
+        CheckCircle(rightSib);
     }
     
     void Voronoi::CheckCircle (Parabola * par)
@@ -311,7 +407,7 @@ namespace Vor
         // The intersection point represents the points to which leftSib and rightSib squeeze par. This means that it is equidistant
         // from leftSib, par, and rightSib (since this point is the meeting of three cells in the diagram).
         Point * intersection = leftParent->getEdge()->GetIntersection(rightParent->getEdge());
-        if (!intersection)
+        if (intersection)
             _points.push_back(intersection);
         else
             return;
@@ -322,7 +418,7 @@ namespace Vor
                dy = leftSib->getSite()->y - intersection->y;
         double d = std::sqrt(dx * dx + dy * dy);
 
-        // We check to see if the circle event lies below the sweep-line and if not we know that it has already happened and can return
+        // We check to see if the circle event lies below the sweep-line and if so return
         if (intersection->y - d < _sweepLineY)
             return;
 
