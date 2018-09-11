@@ -17,10 +17,12 @@ namespace Vor
     #pragma endregion
 
     #pragma region Event Class Prototype
+    class Parabola;
     typedef enum { SiteEvent, CircleEvent } EventType;
     class Event
     {
     public:
+        Parabola * parabola;
         EventType type;
         Point * site;
 
@@ -41,52 +43,85 @@ namespace Vor
     class Edge
     {
     public:
-        Point * start, * left, * right;
+        Parabola * parabola;
+        Point * start, * left, * right, * end;
+        Edge * neighbor;
         Edge(Point * start, Point * left, Point * right);
+
+        Point * GetIntersection(Edge * other);
+        Point GetDirection();
     };
     #pragma endregion
 
-    #pragma region BeachLine Class Prototype
+    #pragma region Parabola Class Prototype
     // Per Stephen Fortune's algorithm, the beach-line sequence will be represented as a binary tree where the leaf nodes
     // contain the parabola information and the inner nodes contain edge information.
     class Parabola
     {
     public:
         friend class BeachLine;
+
         Parabola();
         Parabola(Point * point);
+
+        // Member Functions
+        double GetY(double x, double sweepLineY);
+        Parabola * GetLeftParent();
+        Parabola * GetRightParent();
+        Parabola * GetLeftChild();
+        Parabola * GetRightChild();
 
         // Getters
         bool isLeaf() const { return (_left == nullptr && _right == nullptr); }
 
         Point * getSite() const { return _site; }
-        Parabola * getLeft() const { return _left; }
-        Parabola * getRight() const { return _right; }
+        Parabola * getLeft() { return _left; }
+        Parabola * getRight() { return _right; }
+        Parabola * getParent() const { return _parent; }
 
         Edge * getEdge() const { return _edge; }
         Event * getCircleEvent() const { return _event; }
 
         // Setters
-        void setLeft(Parabola * par) { _left = par; }
-        void setRight(Parabola * par) { _right = par; }
+        void setLeft(Parabola * par)
+        {
+            _left = par;
+            par->_parent = this;
+        }
+        void setRight(Parabola * par)
+        {
+            _right = par;
+            par->_parent = this;
+        }
         void setEdge(Edge * edge) { _edge = edge; }
         void setCircleEvent(Event * cEvent) { _event = cEvent; }
+        
     private:
         Edge * _edge;
         Event * _event;
         Point * _site;
         Parabola * _left, * _right, * _parent;
 
-        bool _isLeaf;
-    };
+        // Useful for calculating parabola intersections and specific coordinates on parabola
+        typedef struct
+        {
+            // In the form f(x)=ax^2+bx+c
+            double a, b, c;
+        } ParabolaProperties;
 
+        double GetXOfEdge(double sweepLineY);
+        ParabolaProperties GetProperties(double sweepLineY);
+    };
+    #pragma endregion
+
+    #pragma region BeachLine Class Prototype
     class BeachLine
     {
     public:
         BeachLine();
 
         bool isEmpty() const;
-        Parabola * GetParabolaByX(double x);
+        Parabola * GetParabolaByX(double x, double sweepLineY);
 
         Parabola * getRoot() const { return _root; }
         void setRoot(Parabola * par) { _root = par; }
@@ -105,18 +140,19 @@ namespace Vor
         std::vector<Edge *> Generate(std::vector<Point *> &points, int width, int height);
 
     private:
-        double sweepLineY;
-        std::priority_queue<Event *, std::vector<Event *>, Event::EComparer> eventQ;
-        std::set<Event *> deletedEvents;
-        std::vector<Edge *> edges;
-        std::list<Point *> points;
-        BeachLine beachline;
+        double _sweepLineY;
+        std::priority_queue<Event *, std::vector<Event *>, Event::EComparer> _eventQ;
+        std::set<Event *> _deletedEvents;
+        std::vector<Edge *> _edges;
+        std::list<Point *> _points;
+        BeachLine _beachline;
 
-        int width, height;
+        double _width, _height;
 
         void InsertParabola(Point * point);
         void RemoveParabola(Event * event);
-        void FixEdges();
+        void CheckCircle (Parabola * par);
+        void FixEdges(Parabola * par);
     };
     #pragma endregion
 }
