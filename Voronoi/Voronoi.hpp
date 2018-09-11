@@ -49,7 +49,6 @@ namespace Vor
         Edge(Point * start, Point * left, Point * right);
 
         Point * GetIntersection(Edge * other);
-    private:
         Point GetDirection();
     };
     #pragma endregion
@@ -148,12 +147,12 @@ namespace Vor
         std::list<Point *> _points;
         BeachLine _beachline;
 
-        int width, height;
+        double _width, _height;
 
         void InsertParabola(Point * point);
         void RemoveParabola(Event * event);
         void CheckCircle (Parabola * par);
-        void FixEdges();
+        void FixEdges(Parabola * par);
     };
     #pragma endregion
 }

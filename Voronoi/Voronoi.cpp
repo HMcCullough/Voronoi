@@ -164,8 +164,8 @@ namespace Vor
 
     std::vector<Edge *> Voronoi::Generate(std::vector<Point *> &points, int width, int height)
     {
-        this->width = width;
-        this->height = height;
+        this->_width = width;
+        this->_height = height;
 
         _sweepLineY = 0.0;
         for (auto it = points.begin(); it != points.end(); ++it)
@@ -205,7 +205,7 @@ namespace Vor
 
         // Fortune's Algorithm produces a "distorted" but topographically equivalent version of the Voronoi diagram. This is directly
         // taken from CMSC 754 lecture notes at http://people.math.gatech.edu/~randall/Algs07/mount.pdf but I could not find the author's name.
-        FixEdges();
+        FixEdges(_beachline.getRoot());
 
         return _edges;
     }
@@ -234,7 +234,7 @@ namespace Vor
 
             // If these sites are at the same y-coord then the edge beginning will be the mid-x starting at the
             // highest possible point (height)
-            Point * midPoint = new Point((firstSite->x + point->x) / 2.0, height);
+            Point * midPoint = new Point((firstSite->x + point->x) / 2.0, _height);
             _points.push_back(midPoint);
 
             // We do not need to determine which is on the left or right because the priority queue sorts
@@ -431,8 +431,30 @@ namespace Vor
         cEvent->parabola = par;
     }
 
-    void Voronoi::FixEdges()
+    void Voronoi::FixEdges(Parabola * par)
     {
+        // Delete leaf nodes since they will not make any more edges
+        if (par && par->isLeaf())
+        {
+            delete par;
+            return;
+        }
+
+        // We want to display the edges outside the bounds of the screen so that it looks like the edges continue past
+        double mx = 0.0;
+        Point dir = par->getEdge()->GetDirection();
+        if (dir.x != 0.0)
+            mx = (dir.x > 0.0) ? mx = std::max(_width, dir.x + 10) : mx = std::min(0.0, dir.x - 10);
+
+        // The end point will be the edge continued until it hits the edge of the screen
+        Point * end = new Point(mx, (mx * dir.y + par->getEdge()->start->y));
+        par->getEdge()->end = end;
+        _points.push_back(end);
+
+        // Recursively correct all other edges
+        FixEdges(par->getLeft());
+        FixEdges(par->getRight());
+        delete par;
     }
     #pragma endregion
 }
