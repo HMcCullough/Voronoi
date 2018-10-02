@@ -33,7 +33,7 @@ namespace Vor
             bool operator()(const Event * e1, const Event * e2)
             {
                 return ((e1->site->y < e2->site->y) ||
-                       ((e1->site->y - e2->site->y < EPSILON) && (e1->site->x < e2->site->x)));
+                       ((e1->site->y - e2->site->y < EPSILON) && (e1->site->x > e2->site->x)));
             }
         };
     };

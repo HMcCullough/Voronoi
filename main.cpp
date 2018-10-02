@@ -1,4 +1,5 @@
 #include "Voronoi/Voronoi.hpp"
+#include <iostream>
 using namespace Vor;
 
 int main(int argc, char ** argv)
@@ -9,7 +10,12 @@ int main(int argc, char ** argv)
     points[2] = new Point(0.0, 2.0);
     Voronoi * v = new Voronoi();
 
-    //v->Generate(points, 5, 5);
+    std::vector<Edge *> edges = v->Generate(points, 5, 5);
+    for (auto it = edges.begin(); it != edges.end(); ++it)
+    {
+        std::cout << "Start: (" << (*it)->start->x << ", " << (*it)->start->y << ")\n";
+        std::cout << "End: (" << (*it)->end->x << ", " << (*it)->end->y << ")\n\n";
+    }
 
     return 0;
 }

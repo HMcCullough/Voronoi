@@ -419,7 +419,7 @@ namespace Vor
         double d = std::sqrt(dx * dx + dy * dy);
 
         // We check to see if the circle event lies below the sweep-line and if so return
-        if (intersection->y - d < _sweepLineY)
+        if (intersection->y - d > _sweepLineY)
             return;
 
         // Otherwise we make the new event and push it to the queue
@@ -441,10 +441,10 @@ namespace Vor
         }
 
         // We want to display the edges outside the bounds of the screen so that it looks like the edges continue past
-        double mx = 0.0;
+        double mx = par->getEdge()->start->x;
         Point dir = par->getEdge()->GetDirection();
         if (dir.x != 0.0)
-            mx = (dir.x > 0.0) ? mx = std::max(_width, dir.x + 10) : mx = std::min(0.0, dir.x - 10);
+            mx = (dir.x > 0.0) ? mx = std::max(_width, par->getEdge()->start->x + 10) : mx = std::min(0.0, par->getEdge()->start->x - 10);
 
         // The end point will be the edge continued until it hits the edge of the screen
         Point * end = new Point(mx, (mx * dir.y + par->getEdge()->start->y));
